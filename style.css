@@ -1,0 +1,59 @@
+:root {
+  --neige: #f2f5f2;
+  --pin: #17302a;
+  --airelle: #9b1b3a;
+  --brume: #6b7d77;
+  --filet: #d5ddd8;
+  --blanc: #ffffff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--neige);
+  color: var(--pin);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header, main { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+header { padding-top: 40px; }
+h1, h2 { font-family: "Bricolage Grotesque", system-ui, sans-serif; margin: 0; }
+h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; color: var(--airelle); }
+header > p { max-width: 60ch; color: var(--brume); margin: 12px 0 24px; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 0; border-block: 1px solid var(--filet); }
+.spacer { flex: 1; }
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+button, .ghost {
+  font: inherit; cursor: pointer; border-radius: 6px; padding: 8px 14px;
+  border: 1px solid var(--pin); background: transparent; color: var(--pin);
+  text-decoration: none; display: inline-block;
+}
+button.primary { background: var(--airelle); border-color: var(--airelle); color: #fff; }
+button.danger { border-color: var(--airelle); color: var(--airelle); }
+button:hover, .ghost:hover { filter: brightness(0.94); }
+button:disabled { opacity: 0.5; cursor: wait; }
+:focus-visible { outline: 3px solid var(--airelle); outline-offset: 2px; }
+
+main { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; padding-block: 28px 60px; }
+.vide { grid-column: 1 / -1; color: var(--brume); }
+
+.carte { background: var(--blanc); border: 1px solid var(--filet); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+.photo { aspect-ratio: 4 / 3; background: var(--filet); }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.corps { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.corps h2 { font-size: 1.2rem; }
+.prix { margin: 0; font-weight: 700; color: var(--airelle); }
+.note { margin: 0; color: var(--brume); font-size: 0.92rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 10px; }
+
+.carte.pris { background: #e9eeea; }
+.carte.pris .photo img { filter: grayscale(1); opacity: 0.55; }
+.carte.pris h2 { text-decoration: line-through; text-decoration-color: var(--airelle); }
+.carte.pris .prix { color: var(--brume); }
+
+dialog { border: 0; border-radius: 12px; padding: 24px; width: min(440px, 92vw); color: var(--pin); }
+dialog::backdrop { background: rgba(23, 48, 42, 0.55); }
+dialog form { display: grid; gap: 12px; }
+dialog label { display: grid; gap: 4px; font-size: 0.92rem; }
+dialog input { font: inherit; padding: 8px 10px; border: 1px solid var(--filet); border-radius: 6px; }
+dialog .actions { justify-content: flex-end; }
