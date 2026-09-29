@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma liste de Noël</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Ma liste de Noël</h1>
+  <p>Repère ce qui est déjà pris. Quand tu achètes un cadeau, clique sur « Je l'achète » : les autres le voient, sans savoir qui l'a pris.</p>
+  <div class="bar">
+    <label class="check"><input type="checkbox" id="masquer"> Masquer les cadeaux déjà achetés</label>
+    <span class="spacer"></span>
+    <button id="btn-export" class="ghost">Exporter en JSON</button>
+    <button id="btn-admin" class="ghost">Modifier la liste</button>
+    <button id="btn-add" class="primary" hidden>Ajouter un cadeau</button>
+  </div>
+</header>
+
+<main id="liste" aria-live="polite"><p class="vide">Chargement…</p></main>
+
+<dialog id="dlg">
+  <form id="form" method="dialog">
+    <h2>Nouveau cadeau</h2>
+    <label>Nom <input name="nom" required maxlength="120"></label>
+    <label>Prix (€) <input name="prix" type="number" min="0" step="0.01"></label>
+    <label>Lien d'achat <input name="lien" type="url" placeholder="https://…"></label>
+    <label>Lien de la photo <input name="photo" type="url" placeholder="https://…"></label>
+    <label>Précision (taille, couleur…) <input name="note" maxlength="200"></label>
+    <div class="actions">
+      <button type="button" id="annuler" class="ghost">Annuler</button>
+      <button type="submit" class="primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ---- À REMPLIR ----
+const SUPABASE_URL = "https://VOTRE-PROJET.supabase.co";
+const SUPABASE_KEY = "VOTRE_CLE_ANON";
+const CODE_MODIF   = "changeme"; // code pour ajouter / supprimer des cadeaux
+// -------------------
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = (s) => document.querySelector(s);
+const liste = $("#liste");
+let items = [], admin = false;
+
+async function charger() {
+  const { data, error } = await db.from("cadeaux").select("*").order("created_at");
+  if (error) { liste.innerHTML = '<p class="vide">Impossible de charger la liste. Vérifie la configuration Supabase.</p>'; return; }
+  items = data; rendre();
+}
+
+function el(tag, cls, txt) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (txt !== undefined) e.textContent = txt;
+  return e;
+}
+const urlOk = (u) => /^https?:\/\//i.test(u || "");
+
+function rendre() {
+  liste.replaceChildren();
+  const vus = items.filter((i) => !($("#masquer").checked && i.achete));
+  if (!vus.length) { liste.append(el("p", "vide", "Aucun cadeau à afficher.")); return; }
+  vus.forEach((it) => {
+    const a = el("article", "carte" + (it.achete ? " pris" : ""));
+    const fig = el("div", "photo");
+    if (urlOk(it.photo)) { const im = el("img"); im.src = it.photo; im.alt = it.nom; im.loading = "lazy"; fig.append(im); }
+    a.append(fig);
+    const body = el("div", "corps");
+    body.append(el("h2", "", it.nom));
+    if (it.prix != null) body.append(el("p", "prix", Number(it.prix).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })));
+    if (it.note) body.append(el("p", "note", it.note));
+    const foot = el("div", "actions");
+    if (urlOk(it.lien)) { const l = el("a", "ghost", "Voir le produit"); l.href = it.lien; l.target = "_blank"; l.rel = "noopener noreferrer"; foot.append(l); }
+    const b = el("button", it.achete ? "ghost" : "primary", it.achete ? "Déjà acheté (annuler)" : "Je l'achète");
+    b.onclick = async () => {
+      b.disabled = true;
+      const { error } = await db.from("cadeaux").update({ achete: !it.achete }).eq("id", it.id);
+      if (error) alert("Enregistrement impossible, réessaie.");
+      charger();
+    };
+    foot.append(b);
+    if (admin) {
+      const d = el("button", "danger", "Supprimer");
+      d.onclick = async () => {
+        if (!confirm("Supprimer « " + it.nom + " » ?")) return;
+        await db.from("cadeaux").delete().eq("id", it.id);
+        charger();
+      };
+      foot.append(d);
+    }
+    body.append(foot);
+    a.append(body);
+    liste.append(a);
+  });
+}
+
+$("#masquer").onchange = rendre;
+$("#btn-admin").onclick = () => {
+  if (admin) return;
+  if (prompt("Code de modification :") === CODE_MODIF) {
+    admin = true; $("#btn-add").hidden = false; $("#btn-admin").hidden = true; rendre();
+  } else alert("Code incorrect.");
+};
+$("#btn-add").onclick = () => $("#dlg").showModal();
+$("#annuler").onclick = () => $("#dlg").close();
+$("#form").onsubmit = async (e) => {
+  const f = new FormData(e.target);
+  const row = {
+    nom: f.get("nom").trim(),
+    prix: f.get("prix") === "" ? null : Number(f.get("prix")),
+    lien: f.get("lien").trim() || null,
+    photo: f.get("photo").trim() || null,
+    note: f.get("note").trim() || null,
+  };
+  const { error } = await db.from("cadeaux").insert(row);
+  if (error) alert("Ajout impossible : " + error.message);
+  e.target.reset(); charger();
+};
+$("#btn-export").onclick = () => {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+  const a = el("a"); a.href = URL.createObjectURL(blob); a.download = "cadeaux-noel.json"; a.click();
+  URL.revokeObjectURL(a.href);
+};
+window.addEventListener("focus", charger);
+charger();
+</script>
+</body>
+</html>
